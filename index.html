@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>December Release Calendar</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        /* Glassmorphism utility */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .glass-modal {
+            background: rgba(15, 23, 42, 0.85); /* Darker for readability */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0px) scale(1); opacity: 1; }
+            50% { transform: translateY(-20px) scale(1.05); opacity: 0.8; }
+            100% { transform: translateY(-50px) scale(0.9); opacity: 0; }
+        }
+        .releasing { animation: floatUp 1.2s ease-out forwards; pointer-events: none; }
+
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+
+        /* Calendar Grid */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top: 3px solid #a855f7;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Error Toast */
+        #error-toast {
+            transform: translateY(150%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #error-toast.show {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white h-screen flex flex-col">
+
+    <!-- Ambient Background -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-slate-900 via-[#1a1528] to-slate-950"></div>
+        <div class="absolute top-10 left-10 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-[80px] opacity-20 animate-blob"></div>
+        <div class="absolute top-10 right-10 w-64 h-64 bg-indigo-500 rounded-full mix-blend-multiply filter blur-[80px] opacity-20 animate-blob animation-delay-2000"></div>
+        <div class="absolute bottom-0 left-1/2 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-[100px] opacity-10 animate-blob"></div>
+    </div>
+
+    <!-- VIEW: Loading -->
+    <div id="loading-view" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900">
+        <div class="loader w-10 h-10 border-4"></div>
+    </div>
+
+    <!-- VIEW: Welcome / "Login" -->
+    <div id="welcome-view" class="relative z-10 hidden flex flex-col items-center justify-center min-h-screen p-6">
+        <div class="glass-panel p-8 rounded-2xl max-w-md w-full text-center shadow-2xl animate-fade-in">
+            <i data-lucide="lock" class="w-12 h-12 mx-auto mb-4 text-purple-300"></i>
+            <h1 class="text-3xl font-serif mb-2">Private Journal</h1>
+            <p class="text-purple-200 mb-8 font-light text-white/70">
+                Sign in to access your shared December space.
+            </p>
+
+            <form id="join-form" class="space-y-4">
+                <div class="text-left">
+                    <label class="block text-sm text-purple-200 mb-1 ml-1">Display Name</label>
+                    <input type="text" id="name-input" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all" placeholder="e.g. Alex" required autocomplete="off" />
+                </div>
+                <!-- Simulated Password field for effect -->
+                <div class="text-left">
+                    <label class="block text-sm text-purple-200 mb-1 ml-1">Pin Code (Optional)</label>
+                    <input type="password" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all" placeholder="****" />
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white font-medium py-3 rounded-xl shadow-lg transform transition active:scale-95">
+                    Unlock Calendar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- VIEW: Main Calendar App -->
+    <div id="app-view" class="hidden flex flex-col h-full relative z-10">
+        
+        <!-- Header -->
+        <header class="glass-panel border-x-0 border-t-0 flex flex-col shadow-md shrink-0 bg-slate-900/50">
+            <div class="px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-br from-purple-500 to-indigo-600 p-2 rounded-lg">
+                        <i data-lucide="calendar-heart" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-serif text-lg tracking-wide">December 2025</h1>
+                        <p id="user-display-name" class="text-xs text-white/50">Logged in as ...</p>
+                    </div>
+                </div>
+                
+                <div class="flex gap-4 text-xs font-medium">
+                    <div class="text-center">
+                        <span id="stat-burden" class="block text-lg font-bold text-amber-200">0</span>
+                        <span class="text-white/40">Active</span>
+                    </div>
+                    <div class="w-px bg-white/10 h-8 self-center"></div>
+                    <div class="text-center">
+                        <span id="stat-released" class="block text-lg font-bold text-purple-300">0</span>
+                        <span class="text-white/40">Released</span>
+                    </div>
+                    <div class="w-px bg-white/10 h-8 self-center"></div>
+                    <button id="logout-btn" class="text-white/40 hover:text-white transition-colors">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Calendar Container -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-6" id="main-scroll-area">
+            <div class="max-w-4xl mx-auto h-full flex flex-col">
+                <!-- Days Header -->
+                <div class="grid grid-cols-7 gap-2 mb-2 text-center text-xs font-bold text-white/30 uppercase tracking-widest">
+                    <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+                </div>
+                
+                <!-- The Grid -->
+                <div id="calendar-grid" class="calendar-grid flex-1 auto-rows-fr">
+                    <!-- Days injected via JS -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: Day Detail -->
+    <div id="day-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="window.closeModal()"></div>
+        
+        <!-- Modal Content -->
+        <div class="glass-modal w-full max-w-lg rounded-2xl shadow-2xl relative flex flex-col max-h-[90vh] animate-fade-in">
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-white/10 flex justify-between items-center shrink-0">
+                <div>
+                    <h2 id="modal-date-title" class="text-2xl font-serif text-white">December 1</h2>
+                    <p class="text-xs text-white/40">Daily Release Journal</p>
+                </div>
+                <button onclick="window.closeModal()" class="p-2 hover:bg-white/10 rounded-full transition-colors">
+                    <i data-lucide="x" class="w-5 h-5 text-white/70"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Entries) -->
+            <div id="modal-entries-list" class="flex-1 overflow-y-auto p-6 space-y-4 bg-black/20">
+                <!-- Entries go here -->
+            </div>
+
+            <!-- Modal Footer (Input) -->
+            <div class="p-4 bg-white/5 border-t border-white/10 shrink-0">
+                <form id="modal-post-form" class="relative">
+                    <textarea
+                        id="modal-entry-input"
+                        placeholder="What are you releasing on this day?"
+                        class="w-full h-24 bg-slate-900/50 border border-white/10 text-white placeholder-white/30 p-3 resize-none focus:outline-none focus:border-purple-500/50 rounded-xl text-sm"
+                        maxlength="500"
+                    ></textarea>
+                    <div class="flex justify-between items-center mt-2">
+                        <span id="modal-char-count" class="text-xs text-white/30">0/500</span>
+                        <button
+                            type="submit"
+                            id="modal-post-btn"
+                            class="flex items-center gap-2 bg-white text-slate-900 px-4 py-2 rounded-lg font-bold text-xs hover:bg-purple-50 transition-colors disabled:opacity-50"
+                            disabled
+                        >
+                            <i data-lucide="plus" class="w-3 h-3"></i>
+                            Add Entry
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Toast -->
+    <div id="error-toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[60] bg-red-500/90 backdrop-blur text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3">
+        <i data-lucide="wifi-off" class="w-5 h-5"></i>
+        <span class="text-sm font-medium">Connection issue. Retrying...</span>
+    </div>
+
+    <!-- Firebase & App Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- 1. CONFIG ---
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- 2. STATE ---
+        let currentUser = null;
+        let displayName = '';
+        let entriesData = [];
+        let selectedDay = null; // 1-31
+        let unsubscribeJournal = null; // Unsubscribe function
+
+        // DOM Elements
+        const views = {
+            loading: document.getElementById('loading-view'),
+            welcome: document.getElementById('welcome-view'),
+            app: document.getElementById('app-view')
+        };
+        const modal = {
+            el: document.getElementById('day-modal'),
+            title: document.getElementById('modal-date-title'),
+            list: document.getElementById('modal-entries-list'),
+            form: document.getElementById('modal-post-form'),
+            input: document.getElementById('modal-entry-input'),
+            btn: document.getElementById('modal-post-btn')
+        };
+        const errorToast = document.getElementById('error-toast');
+
+        // --- 3. AUTH & INIT ---
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth Error:", error);
+                showError("Authentication failed.");
+            }
+        }
+        initAuth();
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            views.loading.classList.add('hidden');
+            
+            if (user) {
+                const savedName = localStorage.getItem(`journal_name_${user.uid}`);
+                if (savedName) {
+                    displayName = savedName;
+                    showApp();
+                } else {
+                    views.welcome.classList.remove('hidden');
+                }
+            } else {
+                views.welcome.classList.remove('hidden');
+                if (unsubscribeJournal) unsubscribeJournal();
+            }
+        });
+
+        // --- 4. VIEW LOGIC ---
+
+        function showApp() {
+            views.welcome.classList.add('hidden');
+            views.app.classList.remove('hidden');
+            document.getElementById('user-display-name').textContent = `Logged in as ${displayName}`;
+            subscribeToJournal();
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+             localStorage.removeItem(`journal_name_${currentUser.uid}`);
+             if (unsubscribeJournal) unsubscribeJournal();
+             location.reload();
+        });
+
+        // Join Form
+        document.getElementById('join-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('name-input').value.trim();
+            if (name && currentUser) {
+                displayName = name;
+                localStorage.setItem(`journal_name_${currentUser.uid}`, name);
+                showApp();
+            }
+        });
+
+        function showError(msg) {
+            errorToast.querySelector('span').textContent = msg || "Connection lost. Retrying...";
+            errorToast.classList.add('show');
+            setTimeout(() => {
+                errorToast.classList.remove('show');
+            }, 5000);
+        }
+
+        // --- 5. CALENDAR LOGIC ---
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            // December 2025 starts on a Monday (Index 1 if Sun=0, but we used Mon as start in Grid Header)
+            const totalDays = 31;
+            const startDayOffset = 0; // Monday is 0 offset in our CSS grid (Mon-Sun layout)
+
+            for(let i=0; i<startDayOffset; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'bg-white/5 rounded-xl opacity-30';
+                grid.appendChild(empty);
+            }
+
+            const today = new Date().getDate();
+            const isDec2025 = new Date().getFullYear() === 2025 && new Date().getMonth() === 11;
+
+            for(let day=1; day<=totalDays; day++) {
+                const dayEntries = entriesData.filter(e => {
+                    if (!e.timestamp) return false;
+                    const d = new Date(e.timestamp.seconds * 1000);
+                    return d.getDate() === day && d.getMonth() === 11 && d.getFullYear() === 2025;
+                });
+
+                const isToday = isDec2025 && day === today;
+                const hasMyEntries = dayEntries.some(e => e.uid === currentUser.uid);
+                const hasOthers = dayEntries.some(e => e.uid !== currentUser.uid);
+
+                const cell = document.createElement('div');
+                cell.className = `
+                    relative bg-white/5 hover:bg-white/10 rounded-xl p-2 cursor-pointer transition-all duration-300
+                    flex flex-col justify-between min-h-[80px] group border border-transparent hover:border-white/20
+                    ${isToday ? 'ring-1 ring-purple-500 bg-purple-500/10' : ''}
+                `;
+                cell.onclick = () => openDayModal(day);
+
+                // Day Number
+                cell.innerHTML = `
+                    <span class="text-sm font-bold ${isToday ? 'text-purple-300' : 'text-white/50 group-hover:text-white'}">${day}</span>
+                `;
+
+                // Indicators
+                if (dayEntries.length > 0) {
+                    const dotsContainer = document.createElement('div');
+                    dotsContainer.className = "flex gap-1 mt-auto flex-wrap";
+                    
+                    if (hasMyEntries) {
+                        dotsContainer.innerHTML += `<div class="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_5px_rgba(168,85,247,0.8)]"></div>`;
+                    }
+                    if (hasOthers) {
+                        dotsContainer.innerHTML += `<div class="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_5px_rgba(99,102,241,0.8)]"></div>`;
+                    }
+                    if (dayEntries.length > 2) {
+                         dotsContainer.innerHTML += `<span class="text-[8px] text-white/50">+${dayEntries.length-2}</span>`;
+                    }
+                    cell.appendChild(dotsContainer);
+                }
+
+                grid.appendChild(cell);
+            }
+        }
+
+        // --- 6. MODAL LOGIC ---
+
+        window.openDayModal = (day) => {
+            selectedDay = day;
+            modal.title.textContent = `December ${day}, 2025`;
+            modal.el.classList.remove('hidden');
+            renderModalEntries();
+            
+            modal.input.value = '';
+            document.getElementById('modal-char-count').textContent = '0/500';
+            modal.btn.disabled = true;
+        };
+
+        window.closeModal = () => {
+            modal.el.classList.add('hidden');
+            selectedDay = null;
+        };
+
+        function renderModalEntries() {
+            modal.list.innerHTML = '';
+            
+            const dayEntries = entriesData.filter(e => {
+                if (!e.timestamp) return false;
+                const d = new Date(e.timestamp.seconds * 1000);
+                return d.getDate() === selectedDay && d.getMonth() === 11 && d.getFullYear() === 2025;
+            });
+
+            dayEntries.sort((a, b) => a.timestamp.seconds - b.timestamp.seconds);
+
+            if (dayEntries.length === 0) {
+                modal.list.innerHTML = `
+                    <div class="text-center py-8 text-white/30">
+                        <i data-lucide="pen-tool" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
+                        <p class="text-sm">No entries for this day yet.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            dayEntries.forEach(entry => {
+                const isMine = entry.uid === currentUser.uid;
+                const isReleased = entry.isReleased;
+                
+                const div = document.createElement('div');
+                div.id = `entry-${entry.id}`;
+                div.className = `p-4 rounded-xl relative group transition-all duration-500 ${isReleased ? 'opacity-50 grayscale' : ''} ${isMine ? 'bg-purple-500/10 border border-purple-500/20 ml-4' : 'bg-indigo-500/10 border border-indigo-500/20 mr-4'}`;
+                
+                let actions = '';
+                if (!isReleased) {
+                    actions = `<button onclick="window.triggerRelease('${entry.id}')" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-yellow-200">Release</button>`;
+                } else {
+                    actions = `<span class="text-xs text-white/30 flex items-center gap-1"><i data-lucide="wind" class="w-3 h-3"></i> Released</span>`;
+                }
+
+                if (isMine) {
+                    actions += `<button onclick="window.triggerDelete('${entry.id}')" class="ml-2 text-white/30 hover:text-red-400"><i data-lucide="trash-2" class="w-3 h-3"></i></button>`;
+                }
+
+                div.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-bold ${isMine ? 'text-purple-300' : 'text-indigo-300'}">${isMine ? 'You' : escapeHtml(entry.authorName)}</span>
+                        <div class="flex items-center gap-2">
+                             ${actions}
+                        </div>
+                    </div>
+                    <p class="text-sm text-white/90 whitespace-pre-wrap ${isReleased ? 'line-through decoration-white/30' : ''}">${escapeHtml(entry.text)}</p>
+                `;
+                modal.list.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        modal.input.addEventListener('input', (e) => {
+            const len = e.target.value.length;
+            document.getElementById('modal-char-count').textContent = `${len}/500`;
+            modal.btn.disabled = len === 0 || len > 500;
+        });
+
+        modal.form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = modal.input.value.trim();
+            if (!text || !currentUser || !selectedDay) return;
+
+            const btn = modal.btn;
+            btn.textContent = '...';
+            btn.disabled = true;
+
+            try {
+                // Construct Date for noon on selected day in Dec 2025
+                const entryDate = new Date(2025, 11, selectedDay, 12, 0, 0);
+
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'journal_entries'), {
+                    text: text,
+                    authorName: displayName,
+                    uid: currentUser.uid,
+                    isReleased: false,
+                    timestamp: Timestamp.fromDate(entryDate)
+                });
+                
+                modal.input.value = '';
+                document.getElementById('modal-char-count').textContent = '0/500';
+            } catch (err) {
+                console.error("Post Error:", err);
+                showError("Could not post. Check connection.");
+            } finally {
+                btn.innerHTML = `<i data-lucide="plus" class="w-3 h-3"></i> Add Entry`;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        });
+
+        // --- 7. FIRESTORE LOGIC ---
+        
+        function subscribeToJournal() {
+            // Prevent multiple listeners
+            if (unsubscribeJournal) {
+                unsubscribeJournal();
+            }
+
+            const q = collection(db, 'artifacts', appId, 'public', 'data', 'journal_entries');
+
+            unsubscribeJournal = onSnapshot(q, (snapshot) => {
+                entriesData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                // Update Stats
+                const burdenCount = entriesData.filter(e => !e.isReleased).length;
+                const releasedCount = entriesData.filter(e => e.isReleased).length;
+                document.getElementById('stat-burden').textContent = burdenCount;
+                document.getElementById('stat-released').textContent = releasedCount;
+
+                renderCalendar();
+                
+                // If modal is open, refresh it
+                if (selectedDay && !document.getElementById('day-modal').classList.contains('hidden')) {
+                    renderModalEntries();
+                }
+
+                lucide.createIcons();
+            }, (error) => {
+                console.error("Data Fetch Error:", error);
+                showError("Sync issues detected. Retrying...");
+            });
+        }
+
+        // --- 8. HELPERS & ACTIONS ---
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        window.triggerRelease = async (id) => {
+             const el = document.getElementById(`entry-${id}`);
+             if(el) el.classList.add('releasing');
+             setTimeout(async () => {
+                 try {
+                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'journal_entries', id), { isReleased: true });
+                 } catch(e) { 
+                     console.error(e);
+                     showError("Could not release entry.");
+                     if(el) el.classList.remove('releasing');
+                 }
+             }, 1000);
+        };
+
+        window.triggerDelete = async (id) => {
+            if(confirm("Delete this entry permanently?")) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'journal_entries', id));
+                } catch(e) { 
+                    console.error(e);
+                    showError("Could not delete entry.");
+                }
+            }
+        };
+
+    </script>
+</body>
+</html>
