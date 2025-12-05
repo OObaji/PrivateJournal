@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>December Release Calendar</title>
+    <title>Lumina Journal</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,572 +11,788 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-        }
-
-        /* Glassmorphism utility */
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .glass-modal {
-            background: rgba(15, 23, 42, 0.85); /* Darker for readability */
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Animations */
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-
-        @keyframes floatUp {
-            0% { transform: translateY(0px) scale(1); opacity: 1; }
-            50% { transform: translateY(-20px) scale(1.05); opacity: 0.8; }
-            100% { transform: translateY(-50px) scale(0.9); opacity: 0; }
-        }
-        .releasing { animation: floatUp 1.2s ease-out forwards; pointer-events: none; }
-
-        @keyframes blob {
-            0% { transform: translate(0px, 0px) scale(1); }
-            33% { transform: translate(30px, -50px) scale(1.1); }
-            66% { transform: translate(-20px, 20px) scale(0.9); }
-            100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob { animation: blob 7s infinite; }
-        .animation-delay-2000 { animation-delay: 2s; }
-
-        /* Calendar Grid */
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
-
-        .loader {
-            border: 3px solid rgba(255,255,255,0.1);
-            border-radius: 50%;
-            border-top: 3px solid #a855f7;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* Error Toast */
-        #error-toast {
-            transform: translateY(150%);
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        #error-toast.show {
-            transform: translateY(0);
-        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, .font-serif { font-family: 'Playfair Display', serif; }
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Custom Scrollbar for dark theme areas */
+        .dark-scroll::-webkit-scrollbar { width: 8px; }
+        .dark-scroll::-webkit-scrollbar-track { background: #0f172a; }
+        .dark-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
     </style>
 </head>
-<body class="bg-slate-900 text-white h-screen flex flex-col">
+<body class="bg-[#FDFBF7] text-gray-800 antialiased overflow-hidden">
 
-    <!-- Ambient Background -->
-    <div class="fixed inset-0 z-0 pointer-events-none">
-        <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-slate-900 via-[#1a1528] to-slate-950"></div>
-        <div class="absolute top-10 left-10 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-[80px] opacity-20 animate-blob"></div>
-        <div class="absolute top-10 right-10 w-64 h-64 bg-indigo-500 rounded-full mix-blend-multiply filter blur-[80px] opacity-20 animate-blob animation-delay-2000"></div>
-        <div class="absolute bottom-0 left-1/2 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-[100px] opacity-10 animate-blob"></div>
-    </div>
+    <!-- APP CONTAINER -->
+    <div id="app" class="relative w-full h-full min-h-screen">
 
-    <!-- VIEW: Loading -->
-    <div id="loading-view" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900">
-        <div class="loader w-10 h-10 border-4"></div>
-    </div>
-
-    <!-- VIEW: Welcome / "Login" -->
-    <div id="welcome-view" class="relative z-10 hidden flex flex-col items-center justify-center min-h-screen p-6">
-        <div class="glass-panel p-8 rounded-2xl max-w-md w-full text-center shadow-2xl animate-fade-in">
-            <i data-lucide="lock" class="w-12 h-12 mx-auto mb-4 text-purple-300"></i>
-            <h1 class="text-3xl font-serif mb-2">Private Journal</h1>
-            <p class="text-purple-200 mb-8 font-light text-white/70">
-                Sign in to access your shared December space.
-            </p>
-
-            <form id="join-form" class="space-y-4">
-                <div class="text-left">
-                    <label class="block text-sm text-purple-200 mb-1 ml-1">Display Name</label>
-                    <input type="text" id="name-input" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all" placeholder="e.g. Alex" required autocomplete="off" />
-                </div>
-                <!-- Simulated Password field for effect -->
-                <div class="text-left">
-                    <label class="block text-sm text-purple-200 mb-1 ml-1">Pin Code (Optional)</label>
-                    <input type="password" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all" placeholder="****" />
-                </div>
-                <button type="submit" class="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white font-medium py-3 rounded-xl shadow-lg transform transition active:scale-95">
-                    Unlock Calendar
-                </button>
-            </form>
+        <!-- 1. LOADING SCREEN -->
+        <div id="view-loading" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#FDFBF7] text-indigo-600">
+            <i data-lucide="loader-2" class="w-12 h-12 animate-spin mb-4"></i>
+            <p class="text-sm font-medium tracking-wide uppercase text-indigo-400">Securing Journal...</p>
         </div>
-    </div>
 
-    <!-- VIEW: Main Calendar App -->
-    <div id="app-view" class="hidden flex flex-col h-full relative z-10">
-        
-        <!-- Header -->
-        <header class="glass-panel border-x-0 border-t-0 flex flex-col shadow-md shrink-0 bg-slate-900/50">
-            <div class="px-6 py-4 flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <div class="bg-gradient-to-br from-purple-500 to-indigo-600 p-2 rounded-lg">
-                        <i data-lucide="calendar-heart" class="w-5 h-5 text-white"></i>
+        <!-- 2. LANDING PAGE (Canvas Background) -->
+        <div id="view-landing" class="fixed inset-0 z-40 bg-slate-950 hidden">
+            <canvas id="star-canvas" class="absolute inset-0 block w-full h-full"></canvas>
+            <div class="relative z-10 flex flex-col items-center justify-center h-full text-center px-6 fade-in">
+                <div class="mb-8 p-6 bg-white/5 rounded-full border border-white/5 backdrop-blur-sm shadow-[0_0_100px_rgba(255,255,255,0.1)] ring-1 ring-white/10 animate-pulse">
+                    <i data-lucide="star" class="w-10 h-10 text-indigo-100 fill-current"></i>
+                </div>
+                <h1 class="text-6xl md:text-8xl font-thin tracking-tight mb-6 text-white drop-shadow-2xl">
+                    <span class="bg-clip-text text-transparent bg-gradient-to-b from-white via-indigo-50 to-slate-400">Lumina</span>
+                </h1>
+                <p class="text-lg md:text-xl text-indigo-200/60 mb-12 max-w-md font-light leading-relaxed tracking-wider font-sans">
+                    A shared constellation of thoughts.<br/> 
+                    <span class="text-white/40 text-sm uppercase tracking-[0.2em] mt-2 block">December 2025</span>
+                </p>
+                <button id="btn-enter-journal" class="group relative overflow-hidden flex items-center gap-4 px-12 py-4 bg-white/5 backdrop-blur-md border border-white/10 text-white rounded-full font-medium text-lg hover:bg-white/10 transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-indigo-950/50">
+                    <span class="relative z-10 tracking-widest uppercase text-xs">Open Journal</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 3. PROFILE SELECTION -->
+        <div id="view-profiles" class="fixed inset-0 z-30 bg-[#020617] text-white flex flex-col items-center justify-center p-4 hidden overflow-y-auto">
+            <h1 id="profile-title" class="text-3xl md:text-4xl font-light mb-16 tracking-wide text-indigo-100 font-serif">Who is writing?</h1>
+            
+            <!-- Profile List Container -->
+            <div id="profile-list" class="flex flex-wrap justify-center gap-8 md:gap-12 mb-20">
+                <!-- Profiles injected here by JS -->
+            </div>
+
+            <button id="btn-toggle-manage" class="px-6 py-2 text-xs uppercase tracking-widest transition-colors border rounded-full text-gray-500 border-gray-800 hover:text-white hover:border-white">
+                Manage Profiles
+            </button>
+        </div>
+
+        <!-- 3b. CREATE PROFILE MODAL -->
+        <div id="modal-create-profile" class="fixed inset-0 z-50 bg-[#020617] text-white flex items-center justify-center p-4 hidden">
+            <div class="max-w-xl w-full text-center bg-[#0f172a] p-8 rounded-3xl border border-white/10 shadow-2xl">
+                <h2 class="text-3xl font-light mb-8 text-indigo-100">Create Profile</h2>
+                <div class="w-full space-y-8">
+                    <input type="text" id="input-new-name" placeholder="Your Name" class="w-full bg-white/5 border border-white/10 text-white px-6 py-4 rounded-xl text-lg focus:outline-none focus:border-indigo-400 text-center placeholder-gray-500">
+                    
+                    <div class="space-y-4">
+                        <p class="text-sm text-gray-400 uppercase tracking-widest">Choose an Avatar</p>
+                        <!-- URL Input -->
+                        <div class="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2 mb-4">
+                            <i data-lucide="link" class="text-gray-500 w-4 h-4"></i>
+                            <input type="url" id="input-avatar-url" placeholder="Or paste an image URL..." class="w-full bg-transparent border-none text-sm text-white focus:ring-0 outline-none placeholder-gray-500">
+                        </div>
+                        <!-- Icons Grid -->
+                        <div id="avatar-grid" class="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                            <!-- Injected by JS -->
+                        </div>
                     </div>
-                    <div>
-                        <h1 class="font-serif text-lg tracking-wide">December 2025</h1>
-                        <p id="user-display-name" class="text-xs text-white/50">Logged in as ...</p>
+
+                    <div class="flex gap-4 justify-center mt-8 pt-4 border-t border-white/5">
+                        <button id="btn-cancel-create" class="px-6 py-3 text-gray-400 hover:text-white text-sm uppercase tracking-wider">Cancel</button>
+                        <button id="btn-confirm-create" class="bg-indigo-500 text-white px-8 py-3 rounded-full hover:bg-indigo-400 shadow-lg shadow-indigo-900/20 font-medium">Start Journey</button>
                     </div>
                 </div>
-                
-                <div class="flex gap-4 text-xs font-medium">
-                    <div class="text-center">
-                        <span id="stat-burden" class="block text-lg font-bold text-amber-200">0</span>
-                        <span class="text-white/40">Active</span>
+            </div>
+        </div>
+
+        <!-- 4. DASHBOARD (Grid) -->
+        <div id="view-dashboard" class="relative w-full min-h-screen bg-[#FDFBF7] hidden pb-20">
+            <div class="max-w-7xl mx-auto px-4 py-8 sm:py-12">
+                <!-- Header -->
+                <header class="flex flex-col md:flex-row items-center justify-between gap-6 mb-12">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-lg shadow-indigo-200">
+                            <i data-lucide="calendar-days" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900 tracking-tight font-serif">Lumina</h1>
+                            <p class="text-xs text-indigo-600 font-medium uppercase tracking-wider">December 2025</p>
+                        </div>
                     </div>
-                    <div class="w-px bg-white/10 h-8 self-center"></div>
-                    <div class="text-center">
-                        <span id="stat-released" class="block text-lg font-bold text-purple-300">0</span>
-                        <span class="text-white/40">Released</span>
+                    <!-- Current User Badge -->
+                    <div id="current-user-badge" class="flex items-center gap-3 bg-white px-4 py-2 rounded-full border border-gray-200 shadow-sm cursor-pointer hover:bg-gray-50 transition-colors">
+                        <!-- Content injected by JS -->
                     </div>
-                    <div class="w-px bg-white/10 h-8 self-center"></div>
-                    <button id="logout-btn" class="text-white/40 hover:text-white transition-colors">
-                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                </header>
+
+                <!-- Grid -->
+                <div id="days-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    <!-- Cards injected by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. ENTRY MODAL (Detail View) -->
+        <div id="modal-entry" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 hidden">
+            <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" id="modal-backdrop"></div>
+            
+            <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden fade-in">
+                <!-- Header -->
+                <div class="px-6 py-6 border-b border-gray-100 flex justify-between items-start bg-gradient-to-r from-indigo-50/30 to-purple-50/30">
+                    <div class="w-full pr-8">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="bg-white/80 backdrop-blur text-indigo-600 border border-indigo-100 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider" id="entry-date-badge">
+                                December 1
+                            </span>
+                        </div>
+                        <!-- Question Display/Edit -->
+                        <div class="group flex items-start gap-2">
+                            <h2 id="entry-question-text" class="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight font-serif cursor-pointer hover:text-indigo-900">
+                                Question goes here...
+                            </h2>
+                            <button id="btn-edit-question" class="mt-1 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity">
+                                <i data-lucide="edit-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <!-- Hidden Edit Input -->
+                        <div id="entry-question-edit" class="hidden flex items-start gap-2 w-full">
+                            <textarea id="input-question-edit" class="w-full text-2xl font-bold text-gray-900 bg-white/50 border border-indigo-200 rounded-lg p-2 focus:ring-2 focus:ring-indigo-200 outline-none resize-none font-serif" rows="2"></textarea>
+                            <button id="btn-save-question" class="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                                <i data-lucide="check" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button id="btn-close-entry" class="p-2 bg-white hover:bg-gray-100 rounded-full text-gray-500 border border-gray-100 shrink-0">
+                        <i data-lucide="x" class="w-6 h-6"></i>
                     </button>
                 </div>
-            </div>
-        </header>
 
-        <!-- Calendar Container -->
-        <main class="flex-1 overflow-y-auto p-4 md:p-6" id="main-scroll-area">
-            <div class="max-w-4xl mx-auto h-full flex flex-col">
-                <!-- Days Header -->
-                <div class="grid grid-cols-7 gap-2 mb-2 text-center text-xs font-bold text-white/30 uppercase tracking-widest">
-                    <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+                <!-- Messages Area -->
+                <div id="entry-list" class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+                    <!-- Dynamic Entries -->
                 </div>
-                
-                <!-- The Grid -->
-                <div id="calendar-grid" class="calendar-grid flex-1 auto-rows-fr">
-                    <!-- Days injected via JS -->
-                </div>
-            </div>
-        </main>
-    </div>
 
-    <!-- MODAL: Day Detail -->
-    <div id="day-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
-        <!-- Backdrop -->
-        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="window.closeModal()"></div>
-        
-        <!-- Modal Content -->
-        <div class="glass-modal w-full max-w-lg rounded-2xl shadow-2xl relative flex flex-col max-h-[90vh] animate-fade-in">
-            <!-- Modal Header -->
-            <div class="p-6 border-b border-white/10 flex justify-between items-center shrink-0">
-                <div>
-                    <h2 id="modal-date-title" class="text-2xl font-serif text-white">December 1</h2>
-                    <p class="text-xs text-white/40">Daily Release Journal</p>
-                </div>
-                <button onclick="window.closeModal()" class="p-2 hover:bg-white/10 rounded-full transition-colors">
-                    <i data-lucide="x" class="w-5 h-5 text-white/70"></i>
-                </button>
-            </div>
+                <!-- Input Area -->
+                <div class="p-4 sm:p-6 bg-white border-t border-gray-100">
+                    <div id="inspiration-box" class="hidden mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-sm text-indigo-700 flex items-start gap-3">
+                        <i data-lucide="sparkles" class="w-4 h-4 mt-0.5 shrink-0"></i>
+                        <p id="inspiration-text">...</p>
+                        <button id="btn-close-inspiration" class="ml-auto text-indigo-400 hover:text-indigo-700"><i data-lucide="x" class="w-3 h-3"></i></button>
+                    </div>
 
-            <!-- Modal Body (Entries) -->
-            <div id="modal-entries-list" class="flex-1 overflow-y-auto p-6 space-y-4 bg-black/20">
-                <!-- Entries go here -->
-            </div>
+                    <div class="relative group">
+                        <textarea id="input-entry" placeholder="Write your answer..." class="w-full pl-6 pr-20 py-4 bg-gray-50 rounded-2xl border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 outline-none transition-all resize-none text-gray-700 placeholder-gray-400 text-base" rows="3"></textarea>
+                        
+                        <button id="btn-inspire" class="absolute right-14 bottom-3 p-3 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Inspire me">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                        </button>
 
-            <!-- Modal Footer (Input) -->
-            <div class="p-4 bg-white/5 border-t border-white/10 shrink-0">
-                <form id="modal-post-form" class="relative">
-                    <textarea
-                        id="modal-entry-input"
-                        placeholder="What are you releasing on this day?"
-                        class="w-full h-24 bg-slate-900/50 border border-white/10 text-white placeholder-white/30 p-3 resize-none focus:outline-none focus:border-purple-500/50 rounded-xl text-sm"
-                        maxlength="500"
-                    ></textarea>
-                    <div class="flex justify-between items-center mt-2">
-                        <span id="modal-char-count" class="text-xs text-white/30">0/500</span>
-                        <button
-                            type="submit"
-                            id="modal-post-btn"
-                            class="flex items-center gap-2 bg-white text-slate-900 px-4 py-2 rounded-lg font-bold text-xs hover:bg-purple-50 transition-colors disabled:opacity-50"
-                            disabled
-                        >
-                            <i data-lucide="plus" class="w-3 h-3"></i>
-                            Add Entry
+                        <button id="btn-send-entry" class="absolute right-3 bottom-3 p-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-xl transition-all shadow-md hover:shadow-lg transform active:scale-95">
+                            <i data-lucide="send" class="w-5 h-5"></i>
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
+
+        <!-- 6. CONFIRMATION MODAL -->
+        <div id="modal-confirm" class="fixed inset-0 z-[60] flex items-center justify-center p-4 hidden">
+            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+            <div class="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="alert-circle" class="w-6 h-6 text-red-500"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 mb-2">Are you sure?</h3>
+                <p class="text-gray-500 mb-6 text-sm">This action cannot be undone.</p>
+                <div class="flex gap-3">
+                    <button id="btn-cancel-confirm" class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium hover:bg-gray-50">Cancel</button>
+                    <button id="btn-do-confirm" class="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 shadow-lg shadow-red-200">Delete</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <!-- Error Toast -->
-    <div id="error-toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[60] bg-red-500/90 backdrop-blur text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3">
-        <i data-lucide="wifi-off" class="w-5 h-5"></i>
-        <span class="text-sm font-medium">Connection issue. Retrying...</span>
-    </div>
-
-    <!-- Firebase & App Logic -->
+    <!-- MODULE SCRIPT -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged, 
+            signOut 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            setDoc, 
+            deleteDoc, 
+            updateDoc, 
+            query, 
+            onSnapshot, 
+            doc, 
+            serverTimestamp 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-        // --- 1. CONFIG ---
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // --- CONSTANTS ---
+        const DEFAULT_QUESTIONS = [
+            "What is your biggest hope for this month?", "A song that describes your mood today.", "A memory from last December.", "Your favorite comfort food and why.", "Who made you smile today?", "Something you are grateful for right now.", "A challenge you are currently facing.", "Describe your perfect morning.", "A book, movie, or show you recently enjoyed.", "One habit you want to break.", "One habit you want to build.", "The best advice you've ever received.", "Describe your surroundings right now.", "What is stressing you out?", "What is relaxing you?", "A photo you took recently (describe it).", "A goal for next year.", "Your favorite holiday tradition.", "Something you learned today.", "A compliment you gave someone recently.", "A compliment you received recently.", "How do you recharge?", "Your favorite smell.", "A place you want to visit.", "Your wish for your friend.", "What made you laugh today.", "A moment of silence you enjoyed.", "Something you're proud of.", "How have you changed this year?", "Your favorite moment from this month."
+        ];
 
+        const AVATAR_OPTIONS = [
+            { id: 'moon-indigo', icon: 'moon', color: 'bg-indigo-500' },
+            { id: 'star-yellow', icon: 'star', color: 'bg-yellow-500' },
+            { id: 'sun-orange', icon: 'sun', color: 'bg-orange-500' },
+            { id: 'zap-purple', icon: 'zap', color: 'bg-purple-500' },
+            { id: 'ghost-slate', icon: 'ghost', color: 'bg-slate-500' },
+            { id: 'cat-pink', icon: 'cat', color: 'bg-pink-500' },
+            { id: 'dog-amber', icon: 'dog', color: 'bg-amber-600' },
+            { id: 'leaf-emerald', icon: 'leaf', color: 'bg-emerald-500' },
+            { id: 'music-rose', icon: 'music', color: 'bg-rose-500' },
+            { id: 'rocket-blue', icon: 'rocket', color: 'bg-blue-600' },
+            { id: 'coffee-brown', icon: 'coffee', color: 'bg-stone-600' },
+            { id: 'heart-red', icon: 'heart', color: 'bg-red-500' },
+        ];
+
+        // --- STATE ---
+        const state = {
+            user: null,
+            profiles: [],
+            entries: [],
+            customQuestions: {},
+            currentProfile: null,
+            selectedDay: null,
+            isManagingProfiles: false,
+            selectedAvatarId: AVATAR_OPTIONS[0].id,
+            pendingDeleteId: null // Stores ID for confirmation
+        };
+
+        // --- FIREBASE INIT ---
+        const firebaseConfig = JSON.parse(window.__firebase_config || '{}');
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const appId = window.__app_id || 'default-app-id';
+        const apiKey = ""; // Injected by environment
 
-        // --- 2. STATE ---
-        let currentUser = null;
-        let displayName = '';
-        let entriesData = [];
-        let selectedDay = null; // 1-31
-        let unsubscribeJournal = null; // Unsubscribe function
-
-        // DOM Elements
+        // --- DOM ELEMENTS ---
         const views = {
-            loading: document.getElementById('loading-view'),
-            welcome: document.getElementById('welcome-view'),
-            app: document.getElementById('app-view')
+            loading: document.getElementById('view-loading'),
+            landing: document.getElementById('view-landing'),
+            profiles: document.getElementById('view-profiles'),
+            dashboard: document.getElementById('view-dashboard')
         };
-        const modal = {
-            el: document.getElementById('day-modal'),
-            title: document.getElementById('modal-date-title'),
-            list: document.getElementById('modal-entries-list'),
-            form: document.getElementById('modal-post-form'),
-            input: document.getElementById('modal-entry-input'),
-            btn: document.getElementById('modal-post-btn')
+        const modals = {
+            createProfile: document.getElementById('modal-create-profile'),
+            entry: document.getElementById('modal-entry'),
+            confirm: document.getElementById('modal-confirm')
         };
-        const errorToast = document.getElementById('error-toast');
 
-        // --- 3. AUTH & INIT ---
-        async function initAuth() {
+        // --- HELPERS ---
+        const generateUserTag = () => Math.floor(1000 + Math.random() * 9000).toString();
+        
+        const callGemini = async (prompt) => {
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Auth Error:", error);
-                showError("Authentication failed.");
+                const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                if (!response.ok) throw new Error('Gemini API Error');
+                const data = await response.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "The stars are silent.";
+            } catch (e) {
+                console.error(e);
+                return "Connection weak. Try again later.";
             }
-        }
-        initAuth();
+        };
 
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            views.loading.classList.add('hidden');
+        // --- RENDER FUNCTIONS ---
+        const showView = (viewName) => {
+            Object.values(views).forEach(el => el.classList.add('hidden'));
+            if(views[viewName]) views[viewName].classList.remove('hidden');
+            if (viewName === 'landing') startCanvas();
+            else stopCanvas();
+        };
+
+        const renderAvatar = (avatarId, avatarUrl, size = 'md') => {
+            const sizeClasses = { sm: "w-6 h-6 p-1", md: "w-10 h-10 p-2", lg: "w-24 h-24 p-5", xl: "w-32 h-32 p-6" };
             
-            if (user) {
-                const savedName = localStorage.getItem(`journal_name_${user.uid}`);
-                if (savedName) {
-                    displayName = savedName;
-                    showApp();
+            if (avatarUrl) {
+                return `
+                    <div class="${sizeClasses[size].split(' ')[0]} ${sizeClasses[size].split(' ')[1]} rounded-full flex items-center justify-center overflow-hidden shadow-lg bg-gray-200 border-2 border-white/10">
+                        <img src="${avatarUrl}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+                    </div>`;
+            }
+            
+            const config = AVATAR_OPTIONS.find(a => a.id === avatarId) || AVATAR_OPTIONS[0];
+            return `
+                <div class="${sizeClasses[size]} ${config.color} text-white rounded-full flex items-center justify-center shadow-lg">
+                    <i data-lucide="${config.icon}" class="w-full h-full"></i>
+                </div>`;
+        };
+
+        const renderProfiles = () => {
+            const container = document.getElementById('profile-list');
+            container.innerHTML = state.profiles.map(user => `
+                <div class="relative group flex flex-col items-center gap-4 transition-all duration-300 ${state.isManagingProfiles ? 'hover:scale-100 cursor-pointer opacity-80 hover:opacity-100' : 'hover:-translate-y-2 cursor-pointer'}"
+                     onclick="handleProfileClick('${user.id}')">
+                    <div class="relative">
+                        ${renderAvatar(user.avatarId, user.avatarUrl, 'lg')}
+                        ${state.isManagingProfiles ? `
+                            <div class="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                                <i data-lucide="trash-2" class="text-red-400 w-8 h-8"></i>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <span class="text-lg font-medium tracking-wide ${state.isManagingProfiles ? 'text-red-400' : 'text-gray-400 group-hover:text-white'}">${user.name}</span>
+                </div>
+            `).join('');
+
+            // Add "New Profile" button if not managing
+            if (!state.isManagingProfiles) {
+                container.innerHTML += `
+                    <button onclick="openCreateProfile()" class="group flex flex-col items-center gap-4 transition-all duration-300 hover:-translate-y-2">
+                        <div class="w-24 h-24 rounded-full bg-transparent flex items-center justify-center text-gray-500 border border-dashed border-gray-600 group-hover:border-indigo-400 group-hover:text-indigo-300 transition-all">
+                            <i data-lucide="plus" class="w-8 h-8"></i>
+                        </div>
+                        <span class="text-gray-500 group-hover:text-indigo-300 text-lg font-medium tracking-wide">New Profile</span>
+                    </button>
+                `;
+            }
+            
+            const title = document.getElementById('profile-title');
+            title.textContent = state.isManagingProfiles ? "Manage Profiles" : "Who is writing?";
+            
+            const btnManage = document.getElementById('btn-toggle-manage');
+            btnManage.textContent = state.isManagingProfiles ? "Done" : "Manage Profiles";
+            btnManage.className = `px-6 py-2 text-xs uppercase tracking-widest transition-colors border rounded-full ${state.isManaging ? 'bg-white text-black border-white' : 'text-gray-600 border-gray-800 hover:text-gray-300 hover:border-gray-600'}`;
+
+            lucide.createIcons();
+        };
+
+        const renderDashboard = () => {
+            // Update Header User
+            const badge = document.getElementById('current-user-badge');
+            if (state.currentProfile) {
+                badge.innerHTML = `
+                    ${renderAvatar(state.currentProfile.avatarId, state.currentProfile.avatarUrl, 'sm')}
+                    <div class="flex flex-col items-start">
+                        <span class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Writing as</span>
+                        <span class="text-sm font-bold text-gray-700 leading-none">${state.currentProfile.name}</span>
+                    </div>
+                    <div class="border-l border-gray-200 pl-3 ml-1">
+                        <span class="text-xs text-indigo-600 font-medium">Switch</span>
+                    </div>
+                `;
+            }
+
+            // Render Grid
+            const grid = document.getElementById('days-grid');
+            // Filter entries that are NOT deleted to show indicators
+            const daysWithEntries = new Set(state.entries.filter(e => !e.isDeleted).map(e => e.day));
+
+            grid.innerHTML = DEFAULT_QUESTIONS.map((q, i) => {
+                const dayNum = i + 1;
+                const questionText = state.customQuestions[dayNum] || q;
+                const hasEntry = daysWithEntries.has(dayNum);
+                
+                return `
+                <button onclick="openEntry(${dayNum})" class="group relative flex flex-col items-start p-5 h-40 w-full rounded-2xl border transition-all duration-300 text-left hover:shadow-xl hover:-translate-y-1 ${hasEntry ? 'bg-gradient-to-br from-indigo-50/80 to-white border-indigo-200 shadow-indigo-100/40' : 'bg-white border-gray-100 hover:border-indigo-200 hover:bg-gray-50'}">
+                    <div class="flex justify-between w-full items-center mb-3">
+                        <span class="text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wide ${hasEntry ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'}">Dec ${dayNum}</span>
+                        ${hasEntry ? `<i data-lucide="book-heart" class="w-4 h-4 text-indigo-400"></i>` : ''}
+                    </div>
+                    <p class="text-sm text-gray-600 font-medium line-clamp-3 leading-relaxed group-hover:text-gray-900 transition-colors">${questionText}</p>
+                    <div class="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
+                        <div class="bg-indigo-600 text-white rounded-full p-2 shadow-lg"><i data-lucide="pen-line" class="w-4 h-4"></i></div>
+                    </div>
+                </button>`;
+            }).join('');
+            
+            lucide.createIcons();
+        };
+
+        const renderEntryModal = () => {
+            if (!state.selectedDay) return;
+            const day = state.selectedDay;
+            const question = state.customQuestions[day] || DEFAULT_QUESTIONS[day-1];
+            const dayEntries = state.entries.filter(e => e.day === day);
+
+            // Update Header
+            document.getElementById('entry-date-badge').textContent = `December ${day}, 2025`;
+            document.getElementById('entry-question-text').textContent = question;
+            
+            // Render Messages
+            const list = document.getElementById('entry-list');
+            if (dayEntries.length === 0) {
+                list.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-gray-400 pb-12">
+                        <div class="bg-white w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-sm border border-gray-100">
+                            <i data-lucide="message-circle" class="w-8 h-8 text-indigo-200"></i>
+                        </div>
+                        <p class="text-lg font-medium text-gray-500">No entries yet</p>
+                    </div>`;
+            } else {
+                list.innerHTML = dayEntries.map(entry => {
+                    // Check ownership based on Tag
+                    const isOwner = entry.userTag === state.currentProfile.userTag;
+                    
+                    return `
+                    <div class="flex flex-col max-w-2xl animate-in slide-in-from-bottom-4 duration-500 ${isOwner ? 'ml-auto items-end' : 'mr-auto items-start'}">
+                        <div class="flex items-center gap-2 mb-2 px-1 ${isOwner ? 'flex-row-reverse' : ''}">
+                            <div class="shrink-0">${renderAvatar(entry.avatarId, entry.avatarUrl, 'sm')}</div>
+                            <span class="text-xs font-bold text-gray-600">${entry.userName || 'Anonymous'}</span>
+                            <span class="text-xs text-gray-400">• ${entry.createdAt?.seconds ? new Date(entry.createdAt.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Just now'}</span>
+                        </div>
+                        <div class="relative group">
+                            <div class="p-6 rounded-2xl shadow-sm border leading-relaxed whitespace-pre-wrap text-base relative ${isOwner ? 'bg-indigo-600 text-white rounded-tr-sm border-indigo-600 shadow-indigo-200' : 'bg-white rounded-tl-sm border-gray-200'} ${entry.isDeleted ? 'italic opacity-60' : ''}">
+                                ${entry.content}
+                            </div>
+                            
+                            <!-- Context Menu Trigger -->
+                            ${isOwner && !entry.isDeleted ? `
+                                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-1 hover:bg-black/10 rounded-full" onclick="toggleMenu('${entry.id}', event)">
+                                    <i data-lucide="more-horizontal" class="w-4 h-4 ${isOwner ? 'text-indigo-200' : 'text-gray-400'}"></i>
+                                </div>
+                                <!-- Menu -->
+                                <div id="menu-${entry.id}" class="hidden absolute top-8 right-0 z-50 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden w-32 animate-in zoom-in-95 origin-top-right">
+                                    <button onclick="confirmDeleteEntry('${entry.id}')" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 font-medium">
+                                        <i data-lucide="trash-2" class="w-3 h-3"></i> Delete
+                                    </button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+            lucide.createIcons();
+        };
+
+        // --- GLOBAL HANDLERS (Attached to Window for HTML access) ---
+        
+        window.handleProfileClick = (id) => {
+            const user = state.profiles.find(u => u.id === id);
+            if (state.isManagingProfiles) {
+                // Delete flow
+                const btn = document.querySelector(`[onclick="handleProfileClick('${id}')"]`);
+                
+                // Simple inline confirmation change
+                if (btn.dataset.confirming === "true") {
+                    // Actual delete
+                    const userEntries = state.entries.filter(e => e.userId === state.user.uid && e.userTag === user.userTag);
+                    // Update entries to deleted (Soft delete for UI)
+                    userEntries.forEach(entry => {
+                        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'journal_entries', entry.id), {
+                            content: "This entry has been deleted.",
+                            isDeleted: true
+                        });
+                    });
+                    // Delete profile
+                    deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'journal_users', id));
+                    if (state.currentProfile?.id === id) state.currentProfile = null;
                 } else {
-                    views.welcome.classList.remove('hidden');
+                    // First click: Change UI to confirm
+                    btn.dataset.confirming = "true";
+                    const span = btn.querySelector('span');
+                    const originalText = span.textContent;
+                    span.textContent = "Tap again to delete";
+                    span.className = "text-red-600 font-bold animate-pulse";
+                    setTimeout(() => {
+                        // Reset if not clicked
+                        btn.dataset.confirming = "false";
+                        span.textContent = originalText;
+                        span.className = "text-red-400 text-lg font-medium tracking-wide";
+                    }, 3000);
                 }
             } else {
-                views.welcome.classList.remove('hidden');
-                if (unsubscribeJournal) unsubscribeJournal();
+                // Select profile
+                state.currentProfile = user;
+                showView('dashboard');
+                renderDashboard();
             }
-        });
-
-        // --- 4. VIEW LOGIC ---
-
-        function showApp() {
-            views.welcome.classList.add('hidden');
-            views.app.classList.remove('hidden');
-            document.getElementById('user-display-name').textContent = `Logged in as ${displayName}`;
-            subscribeToJournal();
-        }
-
-        document.getElementById('logout-btn').addEventListener('click', () => {
-             localStorage.removeItem(`journal_name_${currentUser.uid}`);
-             if (unsubscribeJournal) unsubscribeJournal();
-             location.reload();
-        });
-
-        // Join Form
-        document.getElementById('join-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const name = document.getElementById('name-input').value.trim();
-            if (name && currentUser) {
-                displayName = name;
-                localStorage.setItem(`journal_name_${currentUser.uid}`, name);
-                showApp();
-            }
-        });
-
-        function showError(msg) {
-            errorToast.querySelector('span').textContent = msg || "Connection lost. Retrying...";
-            errorToast.classList.add('show');
-            setTimeout(() => {
-                errorToast.classList.remove('show');
-            }, 5000);
-        }
-
-        // --- 5. CALENDAR LOGIC ---
-
-        function renderCalendar() {
-            const grid = document.getElementById('calendar-grid');
-            grid.innerHTML = '';
-
-            // December 2025 starts on a Monday (Index 1 if Sun=0, but we used Mon as start in Grid Header)
-            const totalDays = 31;
-            const startDayOffset = 0; // Monday is 0 offset in our CSS grid (Mon-Sun layout)
-
-            for(let i=0; i<startDayOffset; i++) {
-                const empty = document.createElement('div');
-                empty.className = 'bg-white/5 rounded-xl opacity-30';
-                grid.appendChild(empty);
-            }
-
-            const today = new Date().getDate();
-            const isDec2025 = new Date().getFullYear() === 2025 && new Date().getMonth() === 11;
-
-            for(let day=1; day<=totalDays; day++) {
-                const dayEntries = entriesData.filter(e => {
-                    if (!e.timestamp) return false;
-                    const d = new Date(e.timestamp.seconds * 1000);
-                    return d.getDate() === day && d.getMonth() === 11 && d.getFullYear() === 2025;
-                });
-
-                const isToday = isDec2025 && day === today;
-                const hasMyEntries = dayEntries.some(e => e.uid === currentUser.uid);
-                const hasOthers = dayEntries.some(e => e.uid !== currentUser.uid);
-
-                const cell = document.createElement('div');
-                cell.className = `
-                    relative bg-white/5 hover:bg-white/10 rounded-xl p-2 cursor-pointer transition-all duration-300
-                    flex flex-col justify-between min-h-[80px] group border border-transparent hover:border-white/20
-                    ${isToday ? 'ring-1 ring-purple-500 bg-purple-500/10' : ''}
-                `;
-                cell.onclick = () => openDayModal(day);
-
-                // Day Number
-                cell.innerHTML = `
-                    <span class="text-sm font-bold ${isToday ? 'text-purple-300' : 'text-white/50 group-hover:text-white'}">${day}</span>
-                `;
-
-                // Indicators
-                if (dayEntries.length > 0) {
-                    const dotsContainer = document.createElement('div');
-                    dotsContainer.className = "flex gap-1 mt-auto flex-wrap";
-                    
-                    if (hasMyEntries) {
-                        dotsContainer.innerHTML += `<div class="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_5px_rgba(168,85,247,0.8)]"></div>`;
-                    }
-                    if (hasOthers) {
-                        dotsContainer.innerHTML += `<div class="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_5px_rgba(99,102,241,0.8)]"></div>`;
-                    }
-                    if (dayEntries.length > 2) {
-                         dotsContainer.innerHTML += `<span class="text-[8px] text-white/50">+${dayEntries.length-2}</span>`;
-                    }
-                    cell.appendChild(dotsContainer);
-                }
-
-                grid.appendChild(cell);
-            }
-        }
-
-        // --- 6. MODAL LOGIC ---
-
-        window.openDayModal = (day) => {
-            selectedDay = day;
-            modal.title.textContent = `December ${day}, 2025`;
-            modal.el.classList.remove('hidden');
-            renderModalEntries();
-            
-            modal.input.value = '';
-            document.getElementById('modal-char-count').textContent = '0/500';
-            modal.btn.disabled = true;
         };
 
-        window.closeModal = () => {
-            modal.el.classList.add('hidden');
-            selectedDay = null;
-        };
-
-        function renderModalEntries() {
-            modal.list.innerHTML = '';
-            
-            const dayEntries = entriesData.filter(e => {
-                if (!e.timestamp) return false;
-                const d = new Date(e.timestamp.seconds * 1000);
-                return d.getDate() === selectedDay && d.getMonth() === 11 && d.getFullYear() === 2025;
-            });
-
-            dayEntries.sort((a, b) => a.timestamp.seconds - b.timestamp.seconds);
-
-            if (dayEntries.length === 0) {
-                modal.list.innerHTML = `
-                    <div class="text-center py-8 text-white/30">
-                        <i data-lucide="pen-tool" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
-                        <p class="text-sm">No entries for this day yet.</p>
-                    </div>
-                `;
-                lucide.createIcons();
-                return;
-            }
-
-            dayEntries.forEach(entry => {
-                const isMine = entry.uid === currentUser.uid;
-                const isReleased = entry.isReleased;
-                
-                const div = document.createElement('div');
-                div.id = `entry-${entry.id}`;
-                div.className = `p-4 rounded-xl relative group transition-all duration-500 ${isReleased ? 'opacity-50 grayscale' : ''} ${isMine ? 'bg-purple-500/10 border border-purple-500/20 ml-4' : 'bg-indigo-500/10 border border-indigo-500/20 mr-4'}`;
-                
-                let actions = '';
-                if (!isReleased) {
-                    actions = `<button onclick="window.triggerRelease('${entry.id}')" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-yellow-200">Release</button>`;
-                } else {
-                    actions = `<span class="text-xs text-white/30 flex items-center gap-1"><i data-lucide="wind" class="w-3 h-3"></i> Released</span>`;
-                }
-
-                if (isMine) {
-                    actions += `<button onclick="window.triggerDelete('${entry.id}')" class="ml-2 text-white/30 hover:text-red-400"><i data-lucide="trash-2" class="w-3 h-3"></i></button>`;
-                }
-
-                div.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-xs font-bold ${isMine ? 'text-purple-300' : 'text-indigo-300'}">${isMine ? 'You' : escapeHtml(entry.authorName)}</span>
-                        <div class="flex items-center gap-2">
-                             ${actions}
-                        </div>
-                    </div>
-                    <p class="text-sm text-white/90 whitespace-pre-wrap ${isReleased ? 'line-through decoration-white/30' : ''}">${escapeHtml(entry.text)}</p>
-                `;
-                modal.list.appendChild(div);
-            });
+        window.openCreateProfile = () => {
+            modals.createProfile.classList.remove('hidden');
+            // Render Avatars Grid
+            document.getElementById('avatar-grid').innerHTML = AVATAR_OPTIONS.map(a => `
+                <button onclick="selectAvatar('${a.id}')" class="aspect-square rounded-xl flex items-center justify-center transition-all relative overflow-hidden ${a.color} ${state.selectedAvatarId === a.id ? 'ring-2 ring-white scale-110 shadow-lg' : 'opacity-70 hover:opacity-100'}">
+                    <i data-lucide="${a.icon}" class="text-white w-6 h-6"></i>
+                </button>
+            `).join('');
             lucide.createIcons();
-        }
+        };
 
-        modal.input.addEventListener('input', (e) => {
-            const len = e.target.value.length;
-            document.getElementById('modal-char-count').textContent = `${len}/500`;
-            modal.btn.disabled = len === 0 || len > 500;
-        });
+        window.selectAvatar = (id) => {
+            state.selectedAvatarId = id;
+            document.getElementById('input-avatar-url').value = ''; // clear url
+            window.openCreateProfile(); // re-render
+        };
 
-        modal.form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const text = modal.input.value.trim();
-            if (!text || !currentUser || !selectedDay) return;
+        window.openEntry = (day) => {
+            state.selectedDay = day;
+            renderEntryModal();
+            modals.entry.classList.remove('hidden');
+        };
 
-            const btn = modal.btn;
-            btn.textContent = '...';
-            btn.disabled = true;
+        window.toggleMenu = (id, e) => {
+            e.stopPropagation();
+            // Close all others
+            document.querySelectorAll('[id^="menu-"]').forEach(el => el.classList.add('hidden'));
+            const menu = document.getElementById(`menu-${id}`);
+            if(menu) menu.classList.toggle('hidden');
+        };
 
-            try {
-                // Construct Date for noon on selected day in Dec 2025
-                const entryDate = new Date(2025, 11, selectedDay, 12, 0, 0);
+        // New wrapper for modal confirmation
+        window.confirmDeleteEntry = (id) => {
+            state.pendingDeleteId = id;
+            modals.confirm.classList.remove('hidden');
+        };
 
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'journal_entries'), {
-                    text: text,
-                    authorName: displayName,
-                    uid: currentUser.uid,
-                    isReleased: false,
-                    timestamp: Timestamp.fromDate(entryDate)
-                });
-                
-                modal.input.value = '';
-                document.getElementById('modal-char-count').textContent = '0/500';
-            } catch (err) {
-                console.error("Post Error:", err);
-                showError("Could not post. Check connection.");
-            } finally {
-                btn.innerHTML = `<i data-lucide="plus" class="w-3 h-3"></i> Add Entry`;
-                btn.disabled = false;
-                lucide.createIcons();
+        // Actual deletion
+        window.performDeleteEntry = () => {
+            if (state.pendingDeleteId) {
+                deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'journal_entries', state.pendingDeleteId));
+                state.pendingDeleteId = null;
+                modals.confirm.classList.add('hidden');
             }
-        });
+        };
 
-        // --- 7. FIRESTORE LOGIC ---
-        
-        function subscribeToJournal() {
-            // Prevent multiple listeners
-            if (unsubscribeJournal) {
-                unsubscribeJournal();
-            }
+        window.cancelDelete = () => {
+            state.pendingDeleteId = null;
+            modals.confirm.classList.add('hidden');
+        };
 
-            const q = collection(db, 'artifacts', appId, 'public', 'data', 'journal_entries');
+        // --- EVENT LISTENERS ---
 
-            unsubscribeJournal = onSnapshot(q, (snapshot) => {
-                entriesData = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
+        document.getElementById('btn-do-confirm').onclick = () => window.performDeleteEntry();
+        document.getElementById('btn-cancel-confirm').onclick = () => window.cancelDelete();
 
-                // Update Stats
-                const burdenCount = entriesData.filter(e => !e.isReleased).length;
-                const releasedCount = entriesData.filter(e => e.isReleased).length;
-                document.getElementById('stat-burden').textContent = burdenCount;
-                document.getElementById('stat-released').textContent = releasedCount;
+        // Toggle Manage Mode
+        document.getElementById('btn-toggle-manage').onclick = () => {
+            state.isManagingProfiles = !state.isManagingProfiles;
+            renderProfiles();
+        };
 
-                renderCalendar();
-                
-                // If modal is open, refresh it
-                if (selectedDay && !document.getElementById('day-modal').classList.contains('hidden')) {
-                    renderModalEntries();
-                }
+        // Create Profile Logic
+        document.getElementById('btn-cancel-create').onclick = () => modals.createProfile.classList.add('hidden');
+        document.getElementById('btn-confirm-create').onclick = async () => {
+            const name = document.getElementById('input-new-name').value.trim();
+            const url = document.getElementById('input-avatar-url').value.trim();
+            if(!name) return;
 
-                lucide.createIcons();
-            }, (error) => {
-                console.error("Data Fetch Error:", error);
-                showError("Sync issues detected. Retrying...");
+            const newProfileId = doc(collection(db, 'artifacts', appId, 'public', 'data', 'journal_users')).id;
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'journal_users', newProfileId), {
+                id: newProfileId,
+                name: name,
+                avatarId: state.selectedAvatarId,
+                avatarUrl: url || null,
+                userTag: generateUserTag(),
+                createdByUid: state.user.uid,
+                joinedAt: serverTimestamp()
             });
-        }
-
-        // --- 8. HELPERS & ACTIONS ---
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        window.triggerRelease = async (id) => {
-             const el = document.getElementById(`entry-${id}`);
-             if(el) el.classList.add('releasing');
-             setTimeout(async () => {
-                 try {
-                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'journal_entries', id), { isReleased: true });
-                 } catch(e) { 
-                     console.error(e);
-                     showError("Could not release entry.");
-                     if(el) el.classList.remove('releasing');
-                 }
-             }, 1000);
+            
+            // Auto select
+            // Listener will update state.profiles, we just need to wait or manually set
+            // For simplicity, wait for listener update
+            modals.createProfile.classList.add('hidden');
         };
 
-        window.triggerDelete = async (id) => {
-            if(confirm("Delete this entry permanently?")) {
-                try {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'journal_entries', id));
-                } catch(e) { 
-                    console.error(e);
-                    showError("Could not delete entry.");
-                }
+        // Send Entry
+        document.getElementById('btn-send-entry').onclick = async () => {
+            const input = document.getElementById('input-entry');
+            const content = input.value.trim();
+            if(!content || !state.currentProfile) return;
+
+            input.value = '';
+            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'journal_entries'), {
+                day: state.selectedDay,
+                content: content,
+                userId: state.user.uid,
+                userName: state.currentProfile.name,
+                userTag: state.currentProfile.userTag,
+                avatarId: state.currentProfile.avatarId,
+                avatarUrl: state.currentProfile.avatarUrl,
+                createdAt: serverTimestamp()
+            });
+        };
+
+        // Enter from Landing
+        document.getElementById('btn-enter-journal').onclick = () => {
+            showView('profiles');
+            renderProfiles();
+        };
+
+        // Edit Question
+        document.getElementById('btn-edit-question').onclick = () => {
+            document.getElementById('entry-question-text').classList.add('hidden');
+            document.getElementById('btn-edit-question').classList.add('hidden');
+            const editContainer = document.getElementById('entry-question-edit');
+            editContainer.classList.remove('hidden');
+            const input = document.getElementById('input-question-edit');
+            input.value = document.getElementById('entry-question-text').textContent.trim();
+            input.focus();
+        };
+
+        document.getElementById('btn-save-question').onclick = async () => {
+            const newText = document.getElementById('input-question-edit').value.trim();
+            if(newText) {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'daily_questions', state.selectedDay.toString()), {
+                    day: state.selectedDay,
+                    text: newText,
+                    updatedAt: serverTimestamp()
+                });
             }
+            // Toggle back logic handles by listener update basically
+            document.getElementById('entry-question-text').classList.remove('hidden');
+            document.getElementById('btn-edit-question').classList.remove('hidden');
+            document.getElementById('entry-question-edit').classList.add('hidden');
         };
+
+        // Inspire Me
+        document.getElementById('btn-inspire').onclick = async () => {
+            const box = document.getElementById('inspiration-box');
+            const text = document.getElementById('inspiration-text');
+            const btn = document.getElementById('btn-inspire');
+            
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>`;
+            
+            const q = document.getElementById('entry-question-text').textContent;
+            const prompt = `Journal prompt: "${q}". Give a creative, short 1-sentence sub-question to inspire deeper writing.`;
+            const result = await callGemini(prompt);
+            
+            text.textContent = `"${result}"`;
+            box.classList.remove('hidden');
+            btn.innerHTML = `<i data-lucide="sparkles" class="w-5 h-5"></i>`;
+            lucide.createIcons();
+        };
+
+        document.getElementById('btn-close-inspiration').onclick = () => document.getElementById('inspiration-box').classList.add('hidden');
+
+        // Close Modal
+        document.getElementById('btn-close-entry').onclick = () => modals.entry.classList.add('hidden');
+        document.getElementById('current-user-badge').onclick = () => showView('profiles');
+
+        // Click outside menu closer
+        window.addEventListener('click', () => {
+            document.querySelectorAll('[id^="menu-"]').forEach(el => el.classList.add('hidden'));
+        });
+
+
+        // --- AUTH & DATA LISTENER ---
+        
+        onAuthStateChanged(auth, async (u) => {
+            if (u) {
+                state.user = u;
+                
+                // 1. Listen to Profiles
+                onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'journal_users')), (snapshot) => {
+                    state.profiles = snapshot.docs.map(d => d.data());
+                    if (document.getElementById('view-profiles').classList.contains('hidden') === false) {
+                        renderProfiles();
+                    }
+                });
+
+                // 2. Listen to Entries
+                onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'journal_entries')), (snapshot) => {
+                    state.entries = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                    
+                    // In-memory sort
+                    state.entries.sort((a, b) => {
+                        const tA = a.createdAt?.seconds || 0;
+                        const tB = b.createdAt?.seconds || 0;
+                        return tA - tB;
+                    });
+
+                    if (!modals.entry.classList.contains('hidden')) renderEntryModal();
+                    if (!views.dashboard.classList.contains('hidden')) renderDashboard();
+                });
+
+                // 3. Listen to Questions
+                onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'daily_questions')), (snapshot) => {
+                    snapshot.docs.forEach(doc => {
+                        state.customQuestions[doc.id] = doc.data().text;
+                    });
+                    if (!views.dashboard.classList.contains('hidden')) renderDashboard();
+                    if (!modals.entry.classList.contains('hidden')) {
+                         document.getElementById('entry-question-text').textContent = state.customQuestions[state.selectedDay] || DEFAULT_QUESTIONS[state.selectedDay - 1];
+                    }
+                });
+
+                // Initial View
+                views.loading.classList.add('hidden');
+                showView('landing');
+
+            } else {
+                // Init Auth
+                const initAuth = async () => {
+                    try {
+                        if (window.__initial_auth_token) {
+                            await signInWithCustomToken(auth, window.__initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (e) {
+                        console.error("Auth failed, retrying anonymously", e);
+                        await signInAnonymously(auth);
+                    }
+                };
+                initAuth();
+            }
+        });
+
+        // --- CANVAS ANIMATION ---
+        let animationId;
+        const startCanvas = () => {
+            const canvas = document.getElementById('star-canvas');
+            const ctx = canvas.getContext('2d');
+            let width = window.innerWidth;
+            let height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            
+            const stars = Array.from({length: 200}, () => ({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                size: Math.random() * 1.5,
+                alpha: Math.random(),
+                speed: Math.random() * 0.2
+            }));
+
+            const loop = () => {
+                ctx.fillStyle = '#020617'; // slate-950
+                ctx.fillRect(0, 0, width, height);
+                
+                // Gradient
+                const grad = ctx.createRadialGradient(width/2, height*1.5, 0, width/2, height/2, width);
+                grad.addColorStop(0, '#312e81');
+                grad.addColorStop(1, 'transparent');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0,0,width,height);
+
+                stars.forEach(star => {
+                    star.y -= star.speed;
+                    star.alpha += (Math.random() - 0.5) * 0.02;
+                    if(star.alpha < 0) star.alpha = 0;
+                    if(star.alpha > 1) star.alpha = 1;
+                    if(star.y < 0) star.y = height;
+
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.size, 0, Math.PI*2);
+                    ctx.fillStyle = `rgba(255,255,255,${star.alpha})`;
+                    ctx.fill();
+                });
+                animationId = requestAnimationFrame(loop);
+            };
+            loop();
+        };
+
+        const stopCanvas = () => cancelAnimationFrame(animationId);
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            if(!views.landing.classList.contains('hidden')) startCanvas();
+        });
 
     </script>
 </body>
